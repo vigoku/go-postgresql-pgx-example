@@ -7,7 +7,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/georgysavva/scany/pgxscan"
+	"github.com/jackc/pgx/v4"
 )
 
 func main() {
@@ -16,25 +17,48 @@ func main() {
 	// usually, this is taken as an environment variable as in below commented out code
 	// databaseUrl = os.Getenv("DATABASE_URL")
 	// for the time being, let's hard code it as follows. change the values as needed.
-	databaseUrl := "postgres://postgres:mypassword@localhost:5432/postgres"
-	dbPool, err := pgxpool.Connect(context.Background(), databaseUrl)
+	databaseUrl := "postgres://postgres:password@localhost:5432/postgres"
+	db, err := pgx.Connect(context.Background(), databaseUrl)
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "unable to connect to database: %v\n", err)
 		os.Exit(1)
 	}
 	//to close DB pool
-	defer dbPool.Close()
+	defer db.Close(context.Background())
 
-	ExecuteSelectQuery(dbPool)
-	ExecuteFunction(dbPool)
+	//ExecuteSelectQuery(db)
+	//ExecuteFunction(db)
+	ExecuteMultiRecord(db)
+	//ExcecuteMultiInsert(db);
 	log.Println("stopping program")
 }
 
-func ExecuteSelectQuery(dbPool *pgxpool.Pool) {
+type User struct {
+	id            string
+	first_name    string
+	last_name     string
+	date_of_birth string
+}
+
+func ExecuteMultiRecord(db *pgx.Conn) {
+	ctx := context.Background()
+	var users []*User
+	err := pgxscan.Select(ctx, db, &users, `SELECT id, first_name, last_name, date_of_birth FROM users`)
+	if err != nil {
+		return
+	}
+
+	for (int i = 0; i < users.Len(); i++) {
+		log.Print(i);
+		log.Print(users[i].id, users[i].first_name, )
+	}
+}
+
+func ExecuteSelectQuery(db *pgx.Conn) {
 	log.Println("starting execution of select query")
 	//execute the query and get result rows
-	rows, err := dbPool.Query(context.Background(), "select * from public.person")
+	rows, err := db.Query(context.Background(), "select * from public.person")
 	if err != nil {
 		log.Fatal("error while executing query")
 	}
@@ -56,14 +80,14 @@ func ExecuteSelectQuery(dbPool *pgxpool.Pool) {
 
 }
 
-func ExecuteFunction(dbPool *pgxpool.Pool) {
+func ExecuteFunction(db *pgx.Conn) {
 	log.Println("starting execution of databse function")
 	// id can be taken as a user input
 	// for the time being, let's hard code it
 	id := 1
 
 	//execute the query and get result rows
-	rows, err := dbPool.Query(context.Background(), "select * from public.get_person_details($1)", id)
+	rows, err := db.Query(context.Background(), "select * from public.get_person_details($1)", id)
 	log.Println("input id: ", id)
 	if err != nil {
 		log.Fatal("error while executing query")
