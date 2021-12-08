@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"os"
 
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v4"
 
 	"github.com/georgysavva/scany/pgxscan"
 )
@@ -18,8 +20,13 @@ type User struct {
 
 func main() {
 	ctx := context.Background()
-	db, _ := pgxpool.Connect(ctx, "postgres://postgres:password@localhost:5432/postgres")
-
+	databaseUrl := "postgres://postgres:password@localhost:5432/postgres"
+	db, err := pgx.Connect(context.Background(), databaseUrl)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "unable to connect to database: %v\n", err)
+		os.Exit(1)
+	}
+	defer db.Close(context.Background())
 	var users []*User
 	pgxscan.Select(ctx, db, &users, `SELECT id, name, email, age FROM users`)
 	// users variable now contains data from all rows.
