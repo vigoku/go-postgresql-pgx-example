@@ -37,8 +37,8 @@ func main() {
 	// 	log.Println(users[i].ID, users[i].Name, users[i].Email, users[i].Age)
 	rows, _ := db.Query(ctx, `SELECT id, name, email, age FROM users`)
 	defer rows.Close()
+	var user User
 	for rows.Next() {
-		var user User
 		if err := pgxscan.ScanRow(&user, rows); err != nil {
 			// Handle row scanning error.
 			fmt.Fprintf(os.Stderr, "End of rows: %v\n", err)
@@ -51,4 +51,18 @@ func main() {
 		// Handle rows final error.
 		fmt.Fprintf(os.Stderr, "End of rows: %v\n", err)
 	}
+	// Write record
+	q := fmt.Sprintf("INSERT INTO users (id, name, email, age) VALUES (%s)", myfunc(user))
+	res, err := db.Exec(ctx, q)
+	if err != nil {
+		return
+	}
+
+	log.Println(res)
+
+	return
+}
+
+func myfunc(user User) string {
+	return fmt.Sprintf("'%s','%s','%s','%d'", user.ID, user.Name, user.Email, user.Age)
 }
